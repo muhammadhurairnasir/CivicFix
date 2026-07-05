@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { 
   LayoutDashboard, FileText, Map, PlusCircle, Bell, 
   ShieldCheck, ClipboardList, Truck, BarChart2, Wrench, 
-  Settings, LogOut, X 
+  Settings, LogOut, X, Crown, Users, Megaphone, Server
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@radix-ui/react-avatar';
 import { useNotifications } from '@/hooks/useReports';
@@ -22,6 +22,7 @@ export default function DashboardSidebar({ onMobileClose }: DashboardSidebarProp
   const router = useRouter();
 
   const isAdmin = ['admin', 'super_admin'].includes(user?.role || '');
+  const isSuperAdmin = user?.role === 'super_admin';
   const isCrew = user?.role === 'crew';
 
   const { data: notifData } = useNotifications(true, 1);
@@ -123,6 +124,21 @@ export default function DashboardSidebar({ onMobileClose }: DashboardSidebarProp
               {isCrew && !isAdmin && (
                 <NavItem href="/crew/tickets" icon={Wrench} label="My Tickets" />
               )}
+            </nav>
+          </div>
+        )}
+
+        {/* Super Admin Section */}
+        {isSuperAdmin && (
+          <div className="border-t border-[var(--border)] pt-6">
+            <h3 className="text-xs font-semibold text-purple-600 uppercase tracking-wider mb-3 px-3 flex items-center">
+              <Crown className="w-3.5 h-3.5 mr-1" /> Super Admin
+            </h3>
+            <nav>
+              <NavItem href="/super-admin" icon={ShieldCheck} label="Platform Overview" />
+              <NavItem href="/super-admin/users" icon={Users} label="User Management" />
+              <NavItem href="/super-admin/announcements" icon={Megaphone} label="Announcements" />
+              <NavItem href="/super-admin/system" icon={Server} label="System Health" />
             </nav>
           </div>
         )}
