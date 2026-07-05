@@ -118,6 +118,8 @@ export async function PATCH(
       if (oldCrewId) {
         await notifyTicketReassigned(
           oldCrewId.toString(),
+          '',
+          '',
           ticket,
           { _id: String(report._id), title: report.title, ticketNumber: report.ticketNumber, address: report.address },
           false
@@ -127,6 +129,8 @@ export async function PATCH(
       // Notify new crew member
       await notifyTicketReassigned(
         String(newCrew._id),
+        newCrew.email,
+        newCrew.name,
         ticket,
         { _id: String(report._id), title: report.title, ticketNumber: report.ticketNumber, address: report.address },
         true

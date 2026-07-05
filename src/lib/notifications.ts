@@ -18,6 +18,8 @@ import {
   sendStatusUpdateEmail,
   sendSlaBreachEmail,
   sendSlaWarningEmail,
+  sendTicketAssignedEmail,
+  sendNewCommentEmail,
 } from '@/lib/email';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -105,9 +107,9 @@ export async function notifyStatusChange(
  * Notify the citizen that crew has been assigned
  */
 export async function notifyTicketAssigned(
-  ticket: { _id: any },
+  ticket: { _id: any; priority?: string; slaDeadline?: Date },
   crewUser: { _id: any; name: string; email: string },
-  report: { _id: any; title: string; ticketNumber: string; address: string; reporterId: { _id: any; name: string; email: string } }
+  report: { _id: any; title: string; ticketNumber: string; address: string; type?: string; severity?: string; ward?: string; description?: string; reporterId: { _id: any; name: string; email: string } }
 ): Promise<void> {
   const reporter = report.reporterId;
 
@@ -120,6 +122,16 @@ export async function notifyTicketAssigned(
       body: `You have been assigned to repair: "${report.title}" at ${report.address}.`,
       reportId: String(report._id),
       ticketId: String(ticket._id),
+      sendEmail: true,
+      emailFn: () => sendTicketAssignedEmail(
+        crewUser.email,
+        crewUser.name,
+        report.ticketNumber,
+        report.title,
+        report.address,
+        ticket.priority || 'P3_NORMAL',
+        ticket.slaDeadline || new Date()
+      ),
     }),
     // Notify citizen
     sendNotification({
@@ -163,7 +175,9 @@ export async function notifyTicketStatusChange(
  */
 export async function notifyTicketReassigned(
   crewUserId: string,
-  ticket: { _id: any },
+  crewEmail: string,
+  crewName: string,
+  ticket: { _id: any; priority?: string; slaDeadline?: Date },
   report: { _id: any; title: string; ticketNumber: string; address: string },
   isNewCrew: boolean
 ): Promise<void> {
@@ -175,6 +189,16 @@ export async function notifyTicketReassigned(
       body: `You have been assigned to "${report.title}" at ${report.address}.`,
       reportId: String(report._id),
       ticketId: String(ticket._id),
+      sendEmail: true,
+      emailFn: () => sendTicketAssignedEmail(
+        crewEmail,
+        crewName,
+        report.ticketNumber,
+        report.title,
+        report.address,
+        ticket.priority || 'P3_NORMAL',
+        ticket.slaDeadline || new Date()
+      ),
     });
   } else {
     await sendNotification({
@@ -247,4 +271,38 @@ export async function notifySlaWarning(
       })
     )
   );
+}
+
+/**
+ * Notify the reporter when a new comment is posted (if it's not their own comment)
+ */
+export async function notifyNewComment(
+  comment: { _id: any; text: string; isOfficial: boolean },
+  commenterUser: { _id: any; name: string },
+  report: { _id: any; title: string; ticketNumber: string; reporterId: { _id: any; name: string; email: string } }
+): Promise<void> {
+  const reporter = report.reporterId;
+
+  // Don't notify the reporter if they are the ones who commented
+  if (String(reporter._id) === String(commenterUser._id)) {
+    return;
+  }
+
+  await sendNotification({
+    userId: String(reporter._id),
+    type: NotificationType.REPORT_UPDATED,
+    title: comment.isOfficial ? `Official Update: ${report.ticketNumber}` : `New Comment: ${report.ticketNumber}`,
+    body: `${commenterUser.name} commented: "${comment.text.substring(0, 50)}${comment.text.length > 50 ? '...' : ''}"`,
+    reportId: String(report._id),
+    sendEmail: true,
+    emailFn: () => sendNewCommentEmail(
+      reporter.email,
+      reporter.name,
+      commenterUser.name,
+      comment.isOfficial,
+      comment.text,
+      report.ticketNumber,
+      report.title
+    ),
+  });
 }

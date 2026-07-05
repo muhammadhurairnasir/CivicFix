@@ -1,5 +1,14 @@
 import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
+import { render } from '@react-email/render';
+
+import WelcomeEmail from '@/emails/WelcomeEmail';
+import VerifyEmailTemplate from '@/emails/VerifyEmailTemplate';
+import PasswordResetEmail from '@/emails/PasswordResetEmail';
+import ReportStatusEmail from '@/emails/ReportStatusEmail';
+import TicketAssignedEmail from '@/emails/TicketAssignedEmail';
+import SlaBreachEmail from '@/emails/SlaBreachEmail';
+import NewCommentEmail from '@/emails/NewCommentEmail';
 
 // ─── Email Provider Setup ─────────────────────────────────────────────────────
 
@@ -18,66 +27,36 @@ const transporter = !useResend
     })
   : null;
 
-const FROM_EMAIL = 'CivicFix <noreply@civicfix.app>';
+const FROM_EMAIL = 'CivicFix <noreply@civicfix.com>';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
-// ─── HTML Templates ───────────────────────────────────────────────────────────
-
-const baseEmailTemplate = (title: string, content: string) => `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-  <style>
-    body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #F8FAFC; color: #0F172A; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; overflow: hidden; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(15,23,42,0.08); margin-top: 40px; margin-bottom: 40px; }
-    .header { background-color: #0F172A; padding: 24px 32px; text-align: center; }
-    .header h1 { color: #ffffff; margin: 0; font-family: 'Sora', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -0.025em; }
-    .content { padding: 40px 32px; line-height: 1.6; }
-    .footer { background-color: #F1F5F9; padding: 24px 32px; text-align: center; font-size: 14px; color: #64748B; }
-    .btn { display: inline-block; background-color: #2563EB; color: #ffffff !important; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; margin-top: 24px; margin-bottom: 8px; text-align: center; }
-    p { margin-bottom: 16px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>CivicFix</h1>
-    </div>
-    <div class="content">
-      ${content}
-    </div>
-    <div class="footer">
-      <p>&copy; ${new Date().getFullYear()} CivicFix. All rights reserved.</p>
-      <p>Building better communities, together.</p>
-    </div>
-  </div>
-</body>
-</html>
-`;
 
 // ─── Core Send Function ───────────────────────────────────────────────────────
 
-async function sendEmail(to: string, subject: string, html: string) {
-  if (useResend && resend) {
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to,
-      subject,
-      html,
-    });
-  } else if (transporter) {
-    await transporter.sendMail({
-      from: FROM_EMAIL,
-      to,
-      subject,
-      html,
-    });
-  } else {
-    console.warn('⚠️ No email provider configured. Logging email content instead:');
-    console.log(`To: ${to}\nSubject: ${subject}\nHTML: ${html}`);
+async function sendEmail(to: string, subject: string, html: string, text: string) {
+  try {
+    if (useResend && resend) {
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to,
+        subject,
+        html,
+        text,
+      });
+    } else if (transporter) {
+      await transporter.sendMail({
+        from: FROM_EMAIL,
+        to,
+        subject,
+        html,
+        text,
+      });
+    } else {
+      console.warn('⚠️ No email provider configured. Logging email instead:');
+      console.log(`[EMAIL] To: ${to}\n[EMAIL] Subject: ${subject}\n[EMAIL] HTML length: ${html.length}`);
+    }
+  } catch (err) {
+    console.error('[Email] Failed to send email:', err);
+    // Never throw — email failures should not break the API
   }
 }
 
@@ -86,90 +65,129 @@ async function sendEmail(to: string, subject: string, html: string) {
 export async function sendVerificationEmail(email: string, name: string, token: string) {
   const verifyLink = `${APP_URL}/api/auth/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
   
-  const content = `
-    <h2 style="font-family: 'Sora', sans-serif; color: #1E3A8A; font-size: 20px; margin-top: 0;">Welcome, ${name}!</h2>
-    <p>Thank you for joining CivicFix. To start reporting issues and making a difference in your community, please verify your email address.</p>
-    <div style="text-align: center;">
-      <a href="${verifyLink}" class="btn">Verify Email Address</a>
-    </div>
-    <p style="font-size: 14px; color: #475569; margin-top: 32px;">If the button doesn't work, copy and paste this link into your browser:</p>
-    <p style="font-size: 14px; color: #2563EB; word-break: break-all;">${verifyLink}</p>
-    <p style="font-size: 14px; color: #94A3B8;">This link will expire in 24 hours.</p>
-  `;
+  const html = render(VerifyEmailTemplate({ name, verifyUrl: verifyLink }));
+  const text = `Hi ${name}, welcome to CivicFix! Please verify your email by opening this link: ${verifyLink}`;
 
-  await sendEmail(email, 'Verify your CivicFix account', baseEmailTemplate('Verify Email', content));
+  await sendEmail(email, 'Verify your CivicFix account', html, text);
 }
 
 export async function sendPasswordResetEmail(email: string, name: string, token: string) {
   const resetLink = `${APP_URL}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
   
-  const content = `
-    <h2 style="font-family: 'Sora', sans-serif; color: #1E3A8A; font-size: 20px; margin-top: 0;">Password Reset Request</h2>
-    <p>Hi ${name},</p>
-    <p>We received a request to reset the password for your CivicFix account. If you didn't make this request, you can safely ignore this email.</p>
-    <div style="text-align: center;">
-      <a href="${resetLink}" class="btn">Reset Password</a>
-    </div>
-    <p style="font-size: 14px; color: #475569; margin-top: 32px;">If the button doesn't work, copy and paste this link into your browser:</p>
-    <p style="font-size: 14px; color: #2563EB; word-break: break-all;">${resetLink}</p>
-    <p style="font-size: 14px; color: #94A3B8;">This link will expire in 1 hour.</p>
-  `;
+  const html = render(PasswordResetEmail({ name, resetUrl: resetLink }));
+  const text = `Hi ${name}, reset your password using this link: ${resetLink}. If you didn't request this, ignore this email.`;
 
-  await sendEmail(email, 'Reset your CivicFix password', baseEmailTemplate('Reset Password', content));
-}
-
-export async function sendStatusUpdateEmail(email: string, name: string, ticketNumber: string, newStatus: string) {
-  const content = `
-    <h2 style="font-family: 'Sora', sans-serif; color: #1E3A8A; font-size: 20px; margin-top: 0;">Report Update: ${ticketNumber}</h2>
-    <p>Hi ${name},</p>
-    <p>There is an update on your recent report (<strong>${ticketNumber}</strong>).</p>
-    <p>The status is now: <strong style="color: #2563EB; text-transform: uppercase;">${newStatus.replace('_', ' ')}</strong></p>
-    <div style="text-align: center;">
-      <a href="${APP_URL}/track/${ticketNumber}" class="btn">View Report Details</a>
-    </div>
-  `;
-
-  await sendEmail(email, `Update on your report ${ticketNumber}`, baseEmailTemplate('Report Update', content));
+  await sendEmail(email, 'Reset your CivicFix password', html, text);
 }
 
 export async function sendWelcomeEmail(email: string, name: string) {
-  const content = `
-    <h2 style="font-family: 'Sora', sans-serif; color: #1E3A8A; font-size: 20px; margin-top: 0;">You're ready to go!</h2>
-    <p>Hi ${name},</p>
-    <p>Your email has been successfully verified. You are now a full member of the CivicFix community.</p>
-    <p>You can now report potholes, track local repairs, and engage with your local government.</p>
-    <div style="text-align: center;">
-      <a href="${APP_URL}/dashboard" class="btn">Go to Dashboard</a>
-    </div>
-  `;
+  const loginUrl = `${APP_URL}/login`;
+  
+  const html = render(WelcomeEmail({ name, loginUrl }));
+  const text = `Welcome to CivicFix, ${name}! You are now ready to report and track issues. Login here: ${loginUrl}`;
 
-  await sendEmail(email, 'Welcome to CivicFix!', baseEmailTemplate('Welcome', content));
+  await sendEmail(email, 'Welcome to CivicFix!', html, text);
 }
 
-export async function sendSlaBreachEmail(email: string, name: string, ticketNumber: string) {
-  const content = `
-    <h2 style="font-family: 'Sora', sans-serif; color: #DC2626; font-size: 20px; margin-top: 0;">SLA Breach Alert</h2>
-    <p>Hi ${name},</p>
-    <p>Ticket <strong>${ticketNumber}</strong> has breached its SLA deadline.</p>
-    <p>Please review the ticket and take immediate action.</p>
-    <div style="text-align: center;">
-      <a href="${APP_URL}/dashboard" class="btn" style="background-color: #DC2626;">View Ticket</a>
-    </div>
-  `;
+export async function sendStatusUpdateEmail(email: string, name: string, ticketNumber: string, newStatus: string) {
+  const reportUrl = `${APP_URL}/track/${ticketNumber}`;
+  
+  const html = render(ReportStatusEmail({
+    name,
+    ticketNumber,
+    newStatus,
+    reportTitle: 'Your Report', // Ideally we'd pass this, but fallback is fine
+    address: 'View online for details',
+    reportUrl,
+  }));
+  const text = `Hi ${name}, there is an update on your report ${ticketNumber}. The new status is ${newStatus}. Track it here: ${reportUrl}`;
 
-  await sendEmail(email, `SLA Breach: Ticket ${ticketNumber}`, baseEmailTemplate('SLA Breach Alert', content));
+  await sendEmail(email, `Update on your report ${ticketNumber}`, html, text);
+}
+
+export async function sendTicketAssignedEmail(
+  email: string, 
+  crewName: string, 
+  ticketNumber: string, 
+  reportTitle: string,
+  address: string,
+  priority: string,
+  slaDeadline: Date
+) {
+  const dashboardUrl = `${APP_URL}/crew`;
+  
+  const html = render(TicketAssignedEmail({
+    crewName,
+    ticketNumber,
+    reportTitle,
+    address,
+    priority,
+    slaDeadline: slaDeadline.toLocaleString(),
+    dashboardUrl,
+  }));
+  const text = `Hi ${crewName}, you have been assigned ticket ${ticketNumber} (${reportTitle}) at ${address}. Please check your dashboard.`;
+
+  await sendEmail(email, `New Ticket Assigned: ${ticketNumber}`, html, text);
+}
+
+export async function sendSlaBreachEmail(email: string, name: string, ticketNumber: string, reportTitle: string = 'Unknown') {
+  const dashboardUrl = `${APP_URL}/admin/tickets`;
+  
+  const html = render(SlaBreachEmail({
+    adminName: name,
+    dashboardUrl,
+    breachedTickets: [{
+      ticketNumber,
+      reportTitle,
+      assignedTo: 'N/A',
+      hoursOverdue: 'SLA Breached',
+    }]
+  }));
+  const text = `⚠️ SLA Breach Alert: Ticket ${ticketNumber} has breached its deadline. Please check the admin dashboard.`;
+
+  await sendEmail(email, `⚠️ SLA Breach: Ticket ${ticketNumber}`, html, text);
 }
 
 export async function sendSlaWarningEmail(email: string, name: string, ticketNumber: string, hoursRemaining: number) {
-  const content = `
-    <h2 style="font-family: 'Sora', sans-serif; color: #EA580C; font-size: 20px; margin-top: 0;">SLA Warning Alert</h2>
-    <p>Hi ${name},</p>
-    <p>Ticket <strong>${ticketNumber}</strong> is at risk of breaching its SLA.</p>
-    <p>It has less than ${hoursRemaining} hours remaining. Please review the ticket.</p>
-    <div style="text-align: center;">
-      <a href="${APP_URL}/dashboard" class="btn" style="background-color: #EA580C;">View Ticket</a>
-    </div>
-  `;
+  // We reuse the SLA Breach template for warnings for now, or just send a text version
+  const dashboardUrl = `${APP_URL}/admin/tickets`;
+  
+  const html = render(SlaBreachEmail({
+    adminName: name,
+    dashboardUrl,
+    breachedTickets: [{
+      ticketNumber,
+      reportTitle: 'Approaching SLA Deadline',
+      assignedTo: 'N/A',
+      hoursOverdue: `Due in ${hoursRemaining}h`,
+    }]
+  }));
+  const text = `SLA Warning: Ticket ${ticketNumber} has ${hoursRemaining} hours remaining. Please check the admin dashboard.`;
 
-  await sendEmail(email, `SLA Warning: Ticket ${ticketNumber} at risk`, baseEmailTemplate('SLA Warning Alert', content));
+  await sendEmail(email, `SLA Warning: Ticket ${ticketNumber} at risk`, html, text);
+}
+
+export async function sendNewCommentEmail(
+  email: string,
+  name: string,
+  commenterName: string,
+  isOfficial: boolean,
+  commentText: string,
+  ticketNumber: string,
+  reportTitle: string
+) {
+  const reportUrl = `${APP_URL}/track/${ticketNumber}`;
+  
+  const html = render(NewCommentEmail({
+    name,
+    commenterName,
+    isOfficial,
+    commentText,
+    ticketNumber,
+    reportTitle,
+    reportUrl,
+  }));
+  const text = `Hi ${name}, ${commenterName} commented on your report: "${commentText}". View it here: ${reportUrl}`;
+
+  await sendEmail(email, `New comment on your report ${ticketNumber}`, html, text);
 }

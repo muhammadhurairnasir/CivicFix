@@ -6,6 +6,7 @@ import { Report, Comment } from '@/models';
 import { ApiResponse, PaginatedResponse } from '@/types';
 import { z } from 'zod';
 import { emitNewComment } from '@/lib/socket/emitters';
+import { notifyNewComment } from '@/lib/notifications';
 
 const commentSchema = z.object({
   text: z.string()
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     await connectDB();
 
-    const report = await Report.findOne({ _id: params.id, isDeleted: false });
+    const report = await Report.findOne({ _id: params.id, isDeleted: false }).populate('reporterId', 'name email');
     if (!report) {
       return NextResponse.json<ApiResponse>({ success: false, error: 'Report not found' }, { status: 404 });
     }
@@ -103,6 +104,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const populatedComment = await Comment.findById(comment._id)
       .populate('authorId', 'name avatar role')
       .lean();
+
+    // Unified Notification (DB, Socket, Push, Email)
+    await notifyNewComment(
+      { _id: String(comment._id), text: comment.text, isOfficial: comment.isOfficial },
+      { _id: String(auth.user.userId), name: auth.user.name },
+      {
+        _id: String(report._id),
+        title: report.title,
+        ticketNumber: report.ticketNumber,
+        reporterId: report.reporterId as any,
+      }
+    );
 
     // Emit real-time update
     emitNewComment(params.id, populatedComment);
