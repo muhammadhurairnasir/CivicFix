@@ -12,11 +12,24 @@ export interface IUserDocument extends Document {
   ward?: string;
   phone?: string;
   avatar?: string;
+  avatarPublicId?: string;
   fcmToken?: string;
   isVerified: boolean;
   isActive: boolean;
   lastLogin?: Date;
   refreshTokenHash?: string;
+  notificationPreferences?: {
+    email: {
+      statusUpdates: boolean;
+      comments: boolean;
+      slaAlerts: boolean;
+    };
+    push: {
+      statusUpdates: boolean;
+      comments: boolean;
+      slaAlerts: boolean;
+    };
+  };
   createdAt: Date;
   updatedAt: Date;
 
@@ -73,6 +86,10 @@ const UserSchema = new Schema<IUserDocument, IUserModel>(
       type: String,
       trim: true,
     },
+    avatarPublicId: {
+      type: String,
+      trim: true,
+    },
     fcmToken: {
       type: String,
       select: false,
@@ -91,6 +108,27 @@ const UserSchema = new Schema<IUserDocument, IUserModel>(
     refreshTokenHash: {
       type: String,
       select: false,
+    },
+    notificationPreferences: {
+      type: new Schema(
+        {
+          email: {
+            statusUpdates: { type: Boolean, default: true },
+            comments:      { type: Boolean, default: true },
+            slaAlerts:     { type: Boolean, default: true },
+          },
+          push: {
+            statusUpdates: { type: Boolean, default: true },
+            comments:      { type: Boolean, default: false },
+            slaAlerts:     { type: Boolean, default: true },
+          },
+        },
+        { _id: false }
+      ),
+      default: () => ({
+        email: { statusUpdates: true, comments: true, slaAlerts: true },
+        push:  { statusUpdates: true, comments: false, slaAlerts: true },
+      }),
     },
   },
   {

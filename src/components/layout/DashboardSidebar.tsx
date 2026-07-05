@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { 
   LayoutDashboard, FileText, Map, PlusCircle, Bell, 
   ShieldCheck, ClipboardList, Truck, BarChart2, Wrench, 
-  Settings, LogOut, X, Crown, Users, Megaphone, Server
+  Settings, LogOut, X, Crown, Users, Megaphone, Server, UserCircle
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@radix-ui/react-avatar';
 import { useNotifications } from '@/hooks/useReports';
@@ -165,7 +165,10 @@ export default function DashboardSidebar({ onMobileClose }: DashboardSidebarProp
         </div>
 
         <div className="flex gap-2">
-          <Link href="/dashboard/settings" className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] rounded transition-colors border border-[var(--border)]">
+          <Link href="/profile" onClick={onMobileClose} className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] rounded transition-colors border border-[var(--border)]">
+            <UserCircle className="w-4 h-4" /> Profile
+          </Link>
+          <Link href="/dashboard/settings" onClick={onMobileClose} className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] rounded transition-colors border border-[var(--border)]">
             <Settings className="w-4 h-4" /> Settings
           </Link>
           <button onClick={handleLogout} className="flex items-center justify-center px-3 py-2 text-xs font-medium text-[var(--status-critical)] hover:bg-[var(--background)] rounded transition-colors border border-transparent hover:border-[var(--status-critical)]/20" title="Logout">
