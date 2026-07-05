@@ -3,6 +3,7 @@ import { Ticket, Notification, User, Report } from '@/models';
 import { TicketStatus, NotificationType, UserRole } from '@/types';
 import { sendSlaBreachEmail, sendSlaWarningEmail } from '@/lib/email';
 import { getRedis } from '@/lib/redis';
+import { emitSlaBreachAlert, emitNewNotification } from '@/lib/socket/emitters';
 
 const ACTIVE_STATUSES = [
   TicketStatus.PENDING,
@@ -43,16 +44,20 @@ export async function checkSlaBreaches() {
 
     const report = ticket.reportId as any;
 
-    const notifyOps = admins.map(admin => 
-      Notification.create({
+    const notifyOps = admins.map(async (admin) => {
+      const notification = await Notification.create({
         userId: admin._id,
         type: NotificationType.SLA_BREACHED,
         title: `SLA Breach: ${report.ticketNumber}`,
         body: `Ticket for "${report.title}" has breached its SLA deadline.`,
         ticketId: ticket._id,
         reportId: report._id,
-      })
-    );
+      });
+      emitNewNotification(String(admin._id), notification);
+      return notification;
+    });
+    
+    emitSlaBreachAlert(ticket);
 
     const emailOps = admins.map(admin => 
       sendSlaBreachEmail(admin.email, admin.name, report.ticketNumber).catch(err => {
@@ -100,16 +105,18 @@ export async function checkUpcomingBreaches() {
       const report = ticket.reportId as any;
       const hoursRemaining = parseFloat(((new Date(ticket.slaDeadline).getTime() - now.getTime()) / (1000 * 60 * 60)).toFixed(1));
 
-      const notifyOps = admins.map(admin => 
-        Notification.create({
+      const notifyOps = admins.map(async (admin) => {
+        const notification = await Notification.create({
           userId: admin._id,
           type: NotificationType.SLA_WARNING,
           title: `SLA Warning: ${report.ticketNumber}`,
           body: `Ticket for "${report.title}" is at risk of breaching SLA in less than 2 hours.`,
           ticketId: ticket._id,
           reportId: report._id,
-        })
-      );
+        });
+        emitNewNotification(String(admin._id), notification);
+        return notification;
+      });
 
       const emailOps = admins.map(admin => 
         sendSlaWarningEmail(admin.email, admin.name, report.ticketNumber, hoursRemaining).catch(err => {

@@ -13,6 +13,9 @@ import { useReport, useUpvote, useComments, useCreateComment } from '@/hooks/use
 import { useAuth } from '@/context/AuthContext';
 import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
 import { Stepper } from '@/components/ui/Stepper';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSocket } from '@/hooks/useSocket';
+import { SOCKET_EVENTS } from '@/lib/socket/events';
 
 export default function ReportDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -25,6 +28,52 @@ export default function ReportDetailPage({ params }: { params: { id: string } })
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [copied, setCopied] = useState(false);
+  const queryClient = useQueryClient();
+  const { joinReport, leaveReport, onEvent, isConnected } = useSocket();
+
+  React.useEffect(() => {
+    if (!reportData?.data?._id || !isConnected) return;
+    
+    const reportId = reportData.data._id;
+    joinReport(reportId);
+    
+    const offStatus = onEvent(SOCKET_EVENTS.REPORT_STATUS_CHANGED, (data) => {
+      queryClient.setQueryData(['report', ticketNumber], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          data: {
+            ...oldData.data,
+            status: data.status
+          }
+        };
+      });
+    });
+
+    const offUpvote = onEvent(SOCKET_EVENTS.REPORT_UPVOTE_UPDATED, (data) => {
+      queryClient.setQueryData(['report', ticketNumber], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          data: {
+            ...oldData.data,
+            upvoteCount: data.upvoteCount
+          }
+        };
+      });
+    });
+    
+    const offComment = onEvent(SOCKET_EVENTS.COMMENT_NEW, (comment) => {
+      queryClient.invalidateQueries({ queryKey: ['comments', reportId] });
+    });
+
+    return () => {
+      leaveReport(reportId);
+      offStatus();
+      offUpvote();
+      offComment();
+    };
+  }, [reportData?.data?._id, isConnected, joinReport, leaveReport, onEvent, queryClient, ticketNumber]);
 
   if (isLoading) {
     return (

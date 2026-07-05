@@ -5,6 +5,7 @@ import { connectDB } from '@/lib/db';
 import { Report, Upvote } from '@/models';
 import { ApiResponse } from '@/types';
 import mongoose from 'mongoose';
+import { emitUpvoteUpdate } from '@/lib/socket/emitters';
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const auth = await requireAuth(req);
@@ -61,6 +62,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     } finally {
       await session.endSession();
     }
+
+    // Emit real-time update
+    emitUpvoteUpdate(reportId, newCount, upvoted);
 
     return NextResponse.json<ApiResponse<{ upvoted: boolean; upvoteCount: number }>>({
       success: true,

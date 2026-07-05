@@ -162,7 +162,7 @@ export default function CrewDashboardPage() {
         ) : priorityQueue.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
             <CheckCircle2 className="h-10 w-10 mx-auto text-green-400 mb-3" />
-            <p className="font-medium text-slate-900">You're all caught up!</p>
+            <p className="font-medium text-slate-900">You&apos;re all caught up!</p>
             <p className="text-sm mt-1">No active tickets in your queue.</p>
           </div>
         ) : (

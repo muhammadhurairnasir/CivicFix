@@ -1,75 +1,81 @@
 // ─── Enums (as const objects for runtime + type safety) ───────────────────────
 
 export const UserRole = {
-  CITIZEN:     'citizen',
-  CREW:        'crew',
-  ADMIN:       'admin',
+  CITIZEN: 'citizen',
+  CREW: 'crew',
+  ADMIN: 'admin',
   SUPER_ADMIN: 'super_admin',
 } as const;
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 export const ReportStatus = {
-  DRAFT:       'draft',
-  OPEN:        'open',
-  UNDER_REVIEW:'under_review',
+  DRAFT: 'draft',
+  OPEN: 'open',
+  UNDER_REVIEW: 'under_review',
   IN_PROGRESS: 'in_progress',
-  RESOLVED:    'resolved',
-  CLOSED:      'closed',
-  REJECTED:    'rejected',
+  RESOLVED: 'resolved',
+  CLOSED: 'closed',
+  REJECTED: 'rejected',
 } as const;
 export type ReportStatus = (typeof ReportStatus)[keyof typeof ReportStatus];
 
 export const ReportType = {
-  POTHOLE:         'pothole',
-  CRACK:           'crack',
-  ROAD_COLLAPSE:   'road_collapse',
-  BROKEN_SIGNAGE:  'broken_signage',
-  FLOODING:        'flooding',
-  DEBRIS:          'debris',
-  FADED_MARKINGS:  'faded_markings',
-  BROKEN_GUARDRAIL:'broken_guardrail',
-  OTHER:           'other',
+  POTHOLE: 'pothole',
+  CRACK: 'crack',
+  ROAD_COLLAPSE: 'road_collapse',
+  BROKEN_SIGNAGE: 'broken_signage',
+  FLOODING: 'flooding',
+  DEBRIS: 'debris',
+  FADED_MARKINGS: 'faded_markings',
+  BROKEN_GUARDRAIL: 'broken_guardrail',
+  STREET_LIGHT: 'street_light',
+  TRAFFIC_SIGNAL: 'traffic_signal',
+  SANITATION: 'sanitation',
+  SEWAGE: 'sewage',
+  SIGNAGE: 'signage',
+  FALLEN_TREE: 'fallen_tree',
+  OTHER: 'other',
 } as const;
 export type ReportType = (typeof ReportType)[keyof typeof ReportType];
 
 export const Severity = {
-  LOW:      'low',
-  MEDIUM:   'medium',
-  HIGH:     'high',
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
   CRITICAL: 'critical',
 } as const;
 export type Severity = (typeof Severity)[keyof typeof Severity];
 
 export const TicketStatus = {
-  PENDING:     'pending',
-  ASSIGNED:    'assigned',
-  DISPATCHED:  'dispatched',
-  EN_ROUTE:    'en_route',
-  ACTIVE:      'active',
-  BLOCKED:     'blocked',
-  COMPLETED:   'completed',
-  CANCELLED:   'cancelled',
+  PENDING: 'pending',
+  ASSIGNED: 'assigned',
+  DISPATCHED: 'dispatched',
+  EN_ROUTE: 'en_route',
+  ACTIVE: 'active',
+  BLOCKED: 'blocked',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
 } as const;
 export type TicketStatus = (typeof TicketStatus)[keyof typeof TicketStatus];
 
 export const TicketPriority = {
-  LOW:      'low',
-  MEDIUM:   'medium',
-  HIGH:     'high',
-  URGENT:   'urgent',
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
+  URGENT: 'urgent',
 } as const;
 export type TicketPriority = (typeof TicketPriority)[keyof typeof TicketPriority];
 
 export const NotificationType = {
-  REPORT_CREATED:   'report_created',
-  REPORT_UPDATED:   'report_updated',
-  REPORT_RESOLVED:  'report_resolved',
-  TICKET_ASSIGNED:  'ticket_assigned',
+  REPORT_CREATED: 'report_created',
+  REPORT_UPDATED: 'report_updated',
+  REPORT_RESOLVED: 'report_resolved',
+  TICKET_ASSIGNED: 'ticket_assigned',
   TICKET_COMPLETED: 'ticket_completed',
-  SLA_WARNING:      'sla_warning',
-  SLA_BREACHED:     'sla_breached',
+  SLA_WARNING: 'sla_warning',
+  SLA_BREACHED: 'sla_breached',
   UPVOTE_MILESTONE: 'upvote_milestone',
-  SYSTEM:           'system',
+  SYSTEM: 'system',
 } as const;
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];
 

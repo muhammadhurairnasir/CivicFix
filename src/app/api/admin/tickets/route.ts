@@ -17,6 +17,7 @@ import { handleApiError } from '@/lib/apiHelpers';
 import { FilterQuery, SortOrder } from 'mongoose';
 import { ITicketDocument } from '@/models/Ticket';
 import { sendStatusUpdateEmail } from '@/lib/email';
+import { emitTicketAssigned, emitNewNotification } from '@/lib/socket/emitters';
 
 // ─── GET /api/admin/tickets ───────────────────────────────────────────────────
 
@@ -185,7 +186,7 @@ export async function POST(req: NextRequest) {
     const reporter = report.reporterId as unknown as { _id: string; name: string; email: string };
 
     // ── Notifications ─────────────────────────────────────────────────────────
-    await Promise.all([
+    const [crewNotification, citizenNotification] = await Promise.all([
       // Notify crew member
       Notification.create({
         userId:   crewMember._id,
@@ -203,6 +204,11 @@ export async function POST(req: NextRequest) {
         reportId: report._id,
       }),
     ]);
+
+    // ── Emit Socket Events ────────────────────────────────────────────────────
+    emitTicketAssigned(String(crewMember._id), ticket);
+    emitNewNotification(String(crewMember._id), crewNotification);
+    emitNewNotification(reporter._id.toString(), citizenNotification);
 
     // ── Emails (fire-and-forget) ──────────────────────────────────────────────
     sendStatusUpdateEmail(reporter.email, reporter.name, report.ticketNumber, ReportStatus.IN_PROGRESS)

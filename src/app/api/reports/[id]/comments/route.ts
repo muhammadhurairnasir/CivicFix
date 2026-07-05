@@ -5,6 +5,7 @@ import { connectDB } from '@/lib/db';
 import { Report, Comment } from '@/models';
 import { ApiResponse, PaginatedResponse } from '@/types';
 import { z } from 'zod';
+import { emitNewComment } from '@/lib/socket/emitters';
 
 const commentSchema = z.object({
   text: z.string()
@@ -102,6 +103,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const populatedComment = await Comment.findById(comment._id)
       .populate('authorId', 'name avatar role')
       .lean();
+
+    // Emit real-time update
+    emitNewComment(params.id, populatedComment);
 
     return NextResponse.json<ApiResponse>({
       success: true,

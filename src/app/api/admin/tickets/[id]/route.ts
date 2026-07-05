@@ -14,6 +14,7 @@ import {
 } from '@/types';
 import { handleApiError } from '@/lib/apiHelpers';
 import { Types } from 'mongoose';
+import { emitTicketStatusChange, emitNewNotification, emitTicketAssigned, emitReportStatusChange } from '@/lib/socket/emitters';
 
 // ── Status → Report status mapping ────────────────────────────────────────────
 const TICKET_TO_REPORT_STATUS: Partial<Record<TicketStatus, ReportStatus>> = {
@@ -114,23 +115,26 @@ export async function PATCH(
 
       // Notify old crew member
       if (oldCrewId) {
-        await Notification.create({
+        const notifOld = await Notification.create({
           userId:   oldCrewId,
           type:     NotificationType.SYSTEM,
           title:    `Ticket Reassigned: ${report.ticketNumber}`,
           body:     `You have been removed from ticket "${report.title}". It has been reassigned.`,
           reportId: report._id,
         });
+        emitNewNotification(oldCrewId.toString(), notifOld);
       }
 
       // Notify new crew member
-      await Notification.create({
+      const notifNew = await Notification.create({
         userId:   newCrew._id,
         type:     NotificationType.TICKET_ASSIGNED,
         title:    `Ticket Assigned: ${report.ticketNumber}`,
         body:     `You have been assigned to "${report.title}" at ${report.address}.`,
         reportId: report._id,
       });
+      emitNewNotification(String(newCrew._id), notifNew);
+      emitTicketAssigned(String(newCrew._id), ticket);
 
       ticket.assignedTo = new Types.ObjectId(body.assignedTo);
     }
@@ -168,13 +172,18 @@ export async function PATCH(
       // Notify citizen
       const reporter = report.reporterId as unknown as { _id: string; name: string; email: string };
       const statusLabel = newTicketStatus.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-      await Notification.create({
+      const notifCitizen = await Notification.create({
         userId:   reporter._id,
         type:     NotificationType.REPORT_UPDATED,
         title:    `Report Update: ${report.ticketNumber}`,
         body:     `Your report "${report.title}" is now: ${statusLabel}.`,
         reportId: report._id,
       });
+      emitNewNotification(reporter._id.toString(), notifCitizen);
+      emitTicketStatusChange(String(report._id), ticket.assignedTo?.toString() || '', newTicketStatus);
+      if (mappedReportStatus) {
+        emitReportStatusChange(String(report._id), mappedReportStatus, report.ticketNumber);
+      }
     }
 
     // ── Add note ──────────────────────────────────────────────────────────────
