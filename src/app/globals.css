@@ -1,0 +1,347 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Google Fonts ──────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/*
+  CivicFix — Locked Color System
+  ALL color values must flow through these CSS variables.
+  No Tailwind palette classes. No hardcoded hex values in components.
+  See implementation_plan.md for full rules.
+*/
+
+@layer base {
+
+  /* ─── LIGHT MODE ──────────────────────────────────────────── */
+  :root {
+    --background:   #F8F9FA;
+    --surface:      #FFFFFF;
+    --card:         #FFFFFF;
+    --border:       #E5E7EB;
+
+    --text-primary:   #111827;
+    --text-secondary: #4B5563;
+    --text-inverse:   #FFFFFF;
+
+    --primary:       #166534;
+    --primary-hover: #14532D;
+    --primary-fg:    #FFFFFF;
+
+    --status-pending:  #D97706;
+    --status-active:   #166534;
+    --status-resolved: #047857;
+    --status-critical: #DC2626;
+
+    /* ── Elevation / Shadows ─────────────────────────────────── */
+    --shadow-xs:       0 1px 2px 0 rgba(26, 25, 23, 0.05);
+    --shadow-sm:       0 1px 3px 0 rgba(26, 25, 23, 0.08), 0 1px 2px -1px rgba(26, 25, 23, 0.06);
+    --shadow-card:     0 2px 8px -1px rgba(26, 25, 23, 0.08), 0 1px 3px -1px rgba(26, 25, 23, 0.05);
+    --shadow-md:       0 4px 12px -2px rgba(26, 25, 23, 0.10), 0 2px 6px -2px rgba(26, 25, 23, 0.06);
+    --shadow-dropdown: 0 8px 24px -4px rgba(26, 25, 23, 0.12), 0 4px 8px -4px rgba(26, 25, 23, 0.08);
+    --shadow-modal:    0 24px 48px -12px rgba(26, 25, 23, 0.22);
+
+    /* ── Transitions ─────────────────────────────────────────── */
+    --transition-fast: 110ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ─── DARK MODE ───────────────────────────────────────────── */
+  .dark {
+    --background:   #111827;
+    --surface:      #1F2937;
+    --card:         #1F2937;
+    --border:       #374151;
+
+    --text-primary:   #F9FAFB;
+    --text-secondary: #9CA3AF;
+    --text-inverse:   #111827;
+
+    --primary:       #22C55E;
+    --primary-hover: #16A34A;
+    --primary-fg:    #FFFFFF;
+
+    --status-pending:  #F59E0B;
+    --status-active:   #22C55E;
+    --status-resolved: #34D399;
+    --status-critical: #EF4444;
+
+    /* ── Elevation / Shadows ─────────────────────────────────── */
+    --shadow-xs:       0 1px 2px 0 rgba(0, 0, 0, 0.30);
+    --shadow-sm:       0 1px 3px 0 rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+    --shadow-card:     0 2px 8px -1px rgba(0, 0, 0, 0.45), 0 1px 3px -1px rgba(0, 0, 0, 0.35);
+    --shadow-md:       0 4px 12px -2px rgba(0, 0, 0, 0.50), 0 2px 6px -2px rgba(0, 0, 0, 0.40);
+    --shadow-dropdown: 0 8px 24px -4px rgba(0, 0, 0, 0.55), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+    --shadow-modal:    0 24px 48px -12px rgba(0, 0, 0, 0.70);
+  }
+}
+
+/* ─── Reset ─────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background-color: var(--background);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100dvh;
+    transition:
+      background-color var(--transition-base),
+      color var(--transition-base);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  img, video, svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  input, button, textarea, select {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+    border: none;
+    background: none;
+  }
+
+  ul, ol {
+    list-style: none;
+  }
+
+  p {
+    color: var(--text-secondary);
+    line-height: 1.65;
+  }
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────── */
+@layer base {
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-secondary);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+}
+
+/* ─── Text Selection ─────────────────────────────────────────── */
+@layer base {
+  ::selection {
+    background-color: var(--primary);
+    color: var(--primary-fg);
+  }
+}
+
+/* ─── Focus Ring ────────────────────────────────────────────── */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* ─── Utilities ──────────────────────────────────────────────── */
+@layer utilities {
+
+  .surface {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .surface-raised {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .transition-theme {
+    transition:
+      background-color var(--transition-base),
+      border-color var(--transition-base),
+      color var(--transition-base),
+      box-shadow var(--transition-base);
+  }
+
+  /* Skeleton shimmer animation */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--surface) 25%,
+      var(--card) 50%,
+      var(--surface) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes scrollHint {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  30%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(250%);  opacity: 0; }
+}
+
+/* ─── Homepage Scroll Animations ─────────────────────────────── */
+
+@keyframes civic-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes civic-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes civic-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes civic-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes civic-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes civic-bar-fill {
+  from { width: 0%; }
+}
+
+@keyframes civic-count-pulse {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Base state — hidden until JS adds .in-view */
+.civic-animate {
+  opacity: 0;
+}
+
+.civic-animate.in-view {
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-duration: 0.6s;
+}
+
+/* Animation variants */
+.civic-animate[data-anim="fade-up"].in-view     { animation-name: civic-fade-up; }
+.civic-animate[data-anim="fade-in"].in-view     { animation-name: civic-fade-in; }
+.civic-animate[data-anim="slide-left"].in-view  { animation-name: civic-slide-in-left; }
+.civic-animate[data-anim="slide-right"].in-view { animation-name: civic-slide-in-right; }
+.civic-animate[data-anim="scale-in"].in-view    { animation-name: civic-scale-in; }
+
+/* Stagger delays */
+.civic-delay-1 { animation-delay: 0.08s; }
+.civic-delay-2 { animation-delay: 0.16s; }
+.civic-delay-3 { animation-delay: 0.24s; }
+.civic-delay-4 { animation-delay: 0.32s; }
+.civic-delay-5 { animation-delay: 0.40s; }
+
+/* SLA bar animation — triggered via JS adding the class */
+.sla-bar {
+  width: 0%;
+  transition: width 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sla-bar.in-view {
+  /* width is set inline; transition does the work */
+  width: var(--sla-width);
+}
+
+/* Stat counter fade-up */
+.stat-value {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.stat-value.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Table row hover — already on tr, but explicit here for specificity */
+.issue-row {
+  transition: background-color 180ms ease;
+}
+
+/* Navbar scroll shadow transition */
+.navbar-scrolled {
+  box-shadow: var(--shadow-sm);
+}
