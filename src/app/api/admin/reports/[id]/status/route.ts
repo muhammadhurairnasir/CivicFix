@@ -2,12 +2,11 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
-import { Report, Comment, Notification } from '@/models';
-import { ApiResponse, UserRole, ReportStatus, NotificationType } from '@/types';
+import { Report, Comment } from '@/models';
+import { ApiResponse, UserRole, ReportStatus } from '@/types';
 import { handleApiError } from '@/lib/apiHelpers';
-import { sendStatusUpdateEmail } from '@/lib/email';
-import User from '@/models/User';
-import { emitReportStatusChange, emitNewNotification } from '@/lib/socket/emitters';
+import { notifyStatusChange } from '@/lib/notifications';
+import { emitReportStatusChange } from '@/lib/socket/emitters';
 
 // ─── PATCH /api/admin/reports/[id]/status ─────────────────────────────────────
 
@@ -52,8 +51,6 @@ export async function PATCH(
     report.status = newStatus;
     await report.save();
 
-    const reporter = report.reporterId as unknown as { _id: string; name: string; email: string };
-
     // ── Optional official comment ─────────────────────────────────────────────
     if (body.note?.trim()) {
       await Comment.create({
@@ -64,24 +61,20 @@ export async function PATCH(
       });
     }
 
-    // ── In-app notification ───────────────────────────────────────────────────
-    const statusLabel = newStatus.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-    const notification = await Notification.create({
-      userId:   reporter._id,
-      type:     NotificationType.REPORT_UPDATED,
-      title:    `Report Status Changed: ${report.ticketNumber}`,
-      body:     `Your report "${report.title}" status has changed from ${oldStatus.replace(/_/g, ' ')} to ${statusLabel}.`,
-      reportId: report._id,
-    });
-
-    // ── Emit Socket Events ────────────────────────────────────────────────────
-    emitReportStatusChange(String(report._id), newStatus, report.ticketNumber);
-    emitNewNotification(reporter._id.toString(), notification);
-
-    // ── Email (fire-and-forget — don't fail request on email error) ───────────
-    sendStatusUpdateEmail(reporter.email, reporter.name, report.ticketNumber, newStatus).catch(
-      (err) => console.error('[Admin Status] Email error:', err)
+    // ── Unified notification (DB + Socket + Push + Email) ─────────────────────
+    await notifyStatusChange(
+      {
+        _id: String(report._id),
+        title: report.title,
+        ticketNumber: report.ticketNumber,
+        reporterId: report.reporterId as any,
+      },
+      newStatus,
+      oldStatus
     );
+
+    // ── Emit report room update ───────────────────────────────────────────────
+    emitReportStatusChange(String(report._id), newStatus, report.ticketNumber);
 
     const updated = await Report.findById(report._id)
       .populate('reporterId', 'name email avatar')

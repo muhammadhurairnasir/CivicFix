@@ -1,9 +1,9 @@
 import { connectDB } from '@/lib/db';
-import { Ticket, Notification, User, Report } from '@/models';
-import { TicketStatus, NotificationType, UserRole } from '@/types';
-import { sendSlaBreachEmail, sendSlaWarningEmail } from '@/lib/email';
+import { Ticket, User } from '@/models';
+import { TicketStatus, UserRole } from '@/types';
 import { getRedis } from '@/lib/redis';
-import { emitSlaBreachAlert, emitNewNotification } from '@/lib/socket/emitters';
+import { notifySlaBreached, notifySlaWarning } from '@/lib/notifications';
+import { emitSlaBreachAlert } from '@/lib/socket/emitters';
 
 const ACTIVE_STATUSES = [
   TicketStatus.PENDING,
@@ -23,7 +23,7 @@ export async function checkSlaBreaches() {
     status: { $in: ACTIVE_STATUSES },
     slaDeadline: { $lte: now },
     slaBreached: false,
-  }).populate('reportId', 'ticketNumber title');
+  }).populate('reportId', 'ticketNumber title _id');
 
   if (breachedTickets.length === 0) {
     return { checked: 0, breached: 0 };
@@ -33,7 +33,7 @@ export async function checkSlaBreaches() {
   const admins = await User.find({
     role: { $in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] },
     isActive: true,
-  }).select('_id email name');
+  }).select('+fcmToken _id email name').lean();
 
   let breachCount = 0;
 
@@ -44,28 +44,15 @@ export async function checkSlaBreaches() {
 
     const report = ticket.reportId as any;
 
-    const notifyOps = admins.map(async (admin) => {
-      const notification = await Notification.create({
-        userId: admin._id,
-        type: NotificationType.SLA_BREACHED,
-        title: `SLA Breach: ${report.ticketNumber}`,
-        body: `Ticket for "${report.title}" has breached its SLA deadline.`,
-        ticketId: ticket._id,
-        reportId: report._id,
-      });
-      emitNewNotification(String(admin._id), notification);
-      return notification;
-    });
-    
-    emitSlaBreachAlert(ticket);
-
-    const emailOps = admins.map(admin => 
-      sendSlaBreachEmail(admin.email, admin.name, report.ticketNumber).catch(err => {
-        console.error(`[SLA Watcher] Failed to send breach email to ${admin.email}:`, err);
-      })
+    // Unified notifications (DB + Socket + Push + Email) for all admins
+    await notifySlaBreached(
+      ticket,
+      { ticketNumber: report.ticketNumber, title: report.title, _id: String(report._id) },
+      admins as any[]
     );
 
-    await Promise.all([...notifyOps, ...emailOps]);
+    // Emit real-time to admin room
+    emitSlaBreachAlert(ticket);
   }
 
   console.log(`[SLA Watcher] Marked ${breachCount} tickets as breached.`);
@@ -82,7 +69,7 @@ export async function checkUpcomingBreaches() {
     status: { $in: ACTIVE_STATUSES },
     slaDeadline: { $gt: now, $lte: twoHoursFromNow },
     slaBreached: false,
-  }).populate('reportId', 'ticketNumber title');
+  }).populate('reportId', 'ticketNumber title _id');
 
   if (atRiskTickets.length === 0) {
     return { warned: 0 };
@@ -91,7 +78,7 @@ export async function checkUpcomingBreaches() {
   const admins = await User.find({
     role: { $in: [UserRole.ADMIN, UserRole.SUPER_ADMIN] },
     isActive: true,
-  }).select('_id email name');
+  }).select('+fcmToken _id email name').lean();
 
   const redisClient = getRedis();
   let warnCount = 0;
@@ -103,28 +90,17 @@ export async function checkUpcomingBreaches() {
     if (!alreadyWarned) {
       warnCount++;
       const report = ticket.reportId as any;
-      const hoursRemaining = parseFloat(((new Date(ticket.slaDeadline).getTime() - now.getTime()) / (1000 * 60 * 60)).toFixed(1));
-
-      const notifyOps = admins.map(async (admin) => {
-        const notification = await Notification.create({
-          userId: admin._id,
-          type: NotificationType.SLA_WARNING,
-          title: `SLA Warning: ${report.ticketNumber}`,
-          body: `Ticket for "${report.title}" is at risk of breaching SLA in less than 2 hours.`,
-          ticketId: ticket._id,
-          reportId: report._id,
-        });
-        emitNewNotification(String(admin._id), notification);
-        return notification;
-      });
-
-      const emailOps = admins.map(admin => 
-        sendSlaWarningEmail(admin.email, admin.name, report.ticketNumber, hoursRemaining).catch(err => {
-          console.error(`[SLA Watcher] Failed to send warning email to ${admin.email}:`, err);
-        })
+      const hoursRemaining = parseFloat(
+        ((new Date(ticket.slaDeadline).getTime() - now.getTime()) / (1000 * 60 * 60)).toFixed(1)
       );
 
-      await Promise.all([...notifyOps, ...emailOps]);
+      // Unified notifications for all admins
+      await notifySlaWarning(
+        ticket,
+        { ticketNumber: report.ticketNumber, title: report.title, _id: String(report._id) },
+        admins as any[],
+        hoursRemaining
+      );
 
       // Set warned flag with a 3-hour TTL
       await redisClient.set(redisKey, '1', 'EX', 3 * 60 * 60);
@@ -134,6 +110,6 @@ export async function checkUpcomingBreaches() {
   if (warnCount > 0) {
     console.log(`[SLA Watcher] Sent early warnings for ${warnCount} tickets.`);
   }
-  
+
   return { warned: warnCount };
 }

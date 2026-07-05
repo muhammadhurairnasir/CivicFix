@@ -12,7 +12,8 @@ import {
 } from '@/types';
 import { handleApiError } from '@/lib/apiHelpers';
 import { Types } from 'mongoose';
-import { emitTicketStatusChange, emitNewNotification, emitReportStatusChange } from '@/lib/socket/emitters';
+import { emitTicketStatusChange, emitReportStatusChange } from '@/lib/socket/emitters';
+import { notifyTicketStatusChange } from '@/lib/notifications';
 
 const TICKET_TO_REPORT_STATUS: Partial<Record<TicketStatus, ReportStatus>> = {
   [TicketStatus.ASSIGNED]:    ReportStatus.IN_PROGRESS,
@@ -167,20 +168,17 @@ export async function PATCH(
           await report.save();
         }
 
-        // Notify citizen
+        // Notify citizen via unified dispatcher
         const reporter = report.reporterId as unknown as { _id: string; name: string; email: string };
-        const statusLabel = newStatus.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-        const notification = await Notification.create({
-          userId:   reporter._id,
-          type:     newStatus === TicketStatus.COMPLETED ? NotificationType.REPORT_RESOLVED : NotificationType.REPORT_UPDATED,
-          title:    newStatus === TicketStatus.COMPLETED ? `Report Resolved: ${report.ticketNumber}` : `Report Update: ${report.ticketNumber}`,
-          body:     `Your report "${report.title}" is now: ${statusLabel}.`,
-          reportId: report._id,
-        });
+        await notifyTicketStatusChange(ticket, {
+          _id: String(report._id),
+          title: report.title,
+          ticketNumber: report.ticketNumber,
+          reporterId: reporter as any,
+        }, newStatus);
 
         // ── Emit Socket Events ────────────────────────────────────────────────────
         emitTicketStatusChange(String(report._id), auth.user.userId, newStatus);
-        emitNewNotification(reporter._id.toString(), notification);
         if (mappedReportStatus) {
            emitReportStatusChange(String(report._id), mappedReportStatus, report.ticketNumber);
         }

@@ -14,7 +14,8 @@ import {
 } from '@/types';
 import { handleApiError } from '@/lib/apiHelpers';
 import { Types } from 'mongoose';
-import { emitTicketStatusChange, emitNewNotification, emitTicketAssigned, emitReportStatusChange } from '@/lib/socket/emitters';
+import { emitTicketStatusChange, emitTicketAssigned, emitReportStatusChange } from '@/lib/socket/emitters';
+import { notifyTicketReassigned, notifyTicketStatusChange } from '@/lib/notifications';
 
 // ── Status → Report status mapping ────────────────────────────────────────────
 const TICKET_TO_REPORT_STATUS: Partial<Record<TicketStatus, ReportStatus>> = {
@@ -113,27 +114,23 @@ export async function PATCH(
 
       const oldCrewId = ticket.assignedTo;
 
-      // Notify old crew member
+      // Notify old crew member (removed)
       if (oldCrewId) {
-        const notifOld = await Notification.create({
-          userId:   oldCrewId,
-          type:     NotificationType.SYSTEM,
-          title:    `Ticket Reassigned: ${report.ticketNumber}`,
-          body:     `You have been removed from ticket "${report.title}". It has been reassigned.`,
-          reportId: report._id,
-        });
-        emitNewNotification(oldCrewId.toString(), notifOld);
+        await notifyTicketReassigned(
+          oldCrewId.toString(),
+          ticket,
+          { _id: String(report._id), title: report.title, ticketNumber: report.ticketNumber, address: report.address },
+          false
+        );
       }
 
       // Notify new crew member
-      const notifNew = await Notification.create({
-        userId:   newCrew._id,
-        type:     NotificationType.TICKET_ASSIGNED,
-        title:    `Ticket Assigned: ${report.ticketNumber}`,
-        body:     `You have been assigned to "${report.title}" at ${report.address}.`,
-        reportId: report._id,
-      });
-      emitNewNotification(String(newCrew._id), notifNew);
+      await notifyTicketReassigned(
+        String(newCrew._id),
+        ticket,
+        { _id: String(report._id), title: report.title, ticketNumber: report.ticketNumber, address: report.address },
+        true
+      );
       emitTicketAssigned(String(newCrew._id), ticket);
 
       ticket.assignedTo = new Types.ObjectId(body.assignedTo);
@@ -169,17 +166,14 @@ export async function PATCH(
         await report.save();
       }
 
-      // Notify citizen
+      // Notify citizen via unified dispatcher
       const reporter = report.reporterId as unknown as { _id: string; name: string; email: string };
-      const statusLabel = newTicketStatus.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-      const notifCitizen = await Notification.create({
-        userId:   reporter._id,
-        type:     NotificationType.REPORT_UPDATED,
-        title:    `Report Update: ${report.ticketNumber}`,
-        body:     `Your report "${report.title}" is now: ${statusLabel}.`,
-        reportId: report._id,
-      });
-      emitNewNotification(reporter._id.toString(), notifCitizen);
+      await notifyTicketStatusChange(ticket, {
+        _id: String(report._id),
+        title: report.title,
+        ticketNumber: report.ticketNumber,
+        reporterId: reporter as any,
+      }, newTicketStatus);
       emitTicketStatusChange(String(report._id), ticket.assignedTo?.toString() || '', newTicketStatus);
       if (mappedReportStatus) {
         emitReportStatusChange(String(report._id), mappedReportStatus, report.ticketNumber);

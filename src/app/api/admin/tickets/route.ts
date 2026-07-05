@@ -16,8 +16,8 @@ import {
 import { handleApiError } from '@/lib/apiHelpers';
 import { FilterQuery, SortOrder } from 'mongoose';
 import { ITicketDocument } from '@/models/Ticket';
-import { sendStatusUpdateEmail } from '@/lib/email';
-import { emitTicketAssigned, emitNewNotification } from '@/lib/socket/emitters';
+import { notifyTicketAssigned } from '@/lib/notifications';
+import { emitTicketAssigned, emitReportStatusChange } from '@/lib/socket/emitters';
 
 // ─── GET /api/admin/tickets ───────────────────────────────────────────────────
 
@@ -185,34 +185,22 @@ export async function POST(req: NextRequest) {
 
     const reporter = report.reporterId as unknown as { _id: string; name: string; email: string };
 
-    // ── Notifications ─────────────────────────────────────────────────────────
-    const [crewNotification, citizenNotification] = await Promise.all([
-      // Notify crew member
-      Notification.create({
-        userId:   crewMember._id,
-        type:     NotificationType.TICKET_ASSIGNED,
-        title:    `New Ticket Assigned: ${report.ticketNumber}`,
-        body:     `You have been assigned to repair: "${report.title}" at ${report.address}.`,
-        reportId: report._id,
-      }),
-      // Notify citizen
-      Notification.create({
-        userId:   reporter._id,
-        type:     NotificationType.REPORT_UPDATED,
-        title:    `Your report is being actioned: ${report.ticketNumber}`,
-        body:     `Good news! A crew has been assigned to your report "${report.title}". Work will begin soon.`,
-        reportId: report._id,
-      }),
-    ]);
+    // ── Unified Notifications (DB + Socket + Push + Email) ──────────────────────
+    await notifyTicketAssigned(
+      ticket,
+      { _id: String(crewMember._id), name: crewMember.name, email: crewMember.email },
+      {
+        _id: String(report._id),
+        title: report.title,
+        ticketNumber: report.ticketNumber,
+        address: report.address,
+        reporterId: reporter as any,
+      }
+    );
 
     // ── Emit Socket Events ────────────────────────────────────────────────────
     emitTicketAssigned(String(crewMember._id), ticket);
-    emitNewNotification(String(crewMember._id), crewNotification);
-    emitNewNotification(reporter._id.toString(), citizenNotification);
-
-    // ── Emails (fire-and-forget) ──────────────────────────────────────────────
-    sendStatusUpdateEmail(reporter.email, reporter.name, report.ticketNumber, ReportStatus.IN_PROGRESS)
-      .catch((err) => console.error('[Admin Create Ticket] Citizen email error:', err));
+    emitReportStatusChange(String(report._id), ReportStatus.IN_PROGRESS, report.ticketNumber);
 
     // ── Return populated ticket ───────────────────────────────────────────────
     const populated = await Ticket.findById(ticket._id)

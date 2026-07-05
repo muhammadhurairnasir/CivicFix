@@ -59,6 +59,14 @@ CivicFix modernizes this relationship. For citizens, it provides a seamless, tra
 - MongoDB instance (local or Atlas)
 - Redis instance (local or Upstash)
 - Cloudinary Account (for image uploads and optimization)
+- Firebase Project (for Cloud Messaging / Push Notifications)
+
+### Firebase Push Notifications Setup
+1. Go to [Firebase Console](https://console.firebase.google.com/) and create a project.
+2. Enable Cloud Messaging in project settings.
+3. Generate a new private key from **Service Accounts**, download the JSON file, and base64 encode it (`cat serviceAccount.json | base64`). Set this as `FIREBASE_ADMIN_JSON`.
+4. Register a Web App in General Settings, copy the Config object, stringify it, and set it as `NEXT_PUBLIC_FIREBASE_CONFIG`.
+5. Under **Cloud Messaging**, generate a Web Push certificate key pair (VAPID key) and set it as `NEXT_PUBLIC_FIREBASE_VAPID_KEY`.
 
 ### Installation
 
