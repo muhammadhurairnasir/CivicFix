@@ -108,7 +108,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // Unified Notification (DB, Socket, Push, Email)
     await notifyNewComment(
       { _id: String(comment._id), text: comment.text, isOfficial: comment.isOfficial },
-      { _id: String(auth.user.userId), name: (populatedComment.authorId as any).name || 'Citizen' },
+      { _id: String(auth.user.userId), name: (populatedComment?.authorId as any)?.name || 'Citizen' },
       {
         _id: String(report._id),
         title: report.title,
