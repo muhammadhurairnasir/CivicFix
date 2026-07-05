@@ -65,7 +65,7 @@ async function sendEmail(to: string, subject: string, html: string, text: string
 export async function sendVerificationEmail(email: string, name: string, token: string) {
   const verifyLink = `${APP_URL}/api/auth/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
   
-  const html = render(VerifyEmailTemplate({ name, verifyUrl: verifyLink }));
+  const html = await render(VerifyEmailTemplate({ name, verifyUrl: verifyLink }));
   const text = `Hi ${name}, welcome to CivicFix! Please verify your email by opening this link: ${verifyLink}`;
 
   await sendEmail(email, 'Verify your CivicFix account', html, text);
@@ -74,7 +74,7 @@ export async function sendVerificationEmail(email: string, name: string, token: 
 export async function sendPasswordResetEmail(email: string, name: string, token: string) {
   const resetLink = `${APP_URL}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
   
-  const html = render(PasswordResetEmail({ name, resetUrl: resetLink }));
+  const html = await render(PasswordResetEmail({ name, resetUrl: resetLink }));
   const text = `Hi ${name}, reset your password using this link: ${resetLink}. If you didn't request this, ignore this email.`;
 
   await sendEmail(email, 'Reset your CivicFix password', html, text);
@@ -83,7 +83,7 @@ export async function sendPasswordResetEmail(email: string, name: string, token:
 export async function sendWelcomeEmail(email: string, name: string) {
   const loginUrl = `${APP_URL}/login`;
   
-  const html = render(WelcomeEmail({ name, loginUrl }));
+  const html = await render(WelcomeEmail({ name, loginUrl }));
   const text = `Welcome to CivicFix, ${name}! You are now ready to report and track issues. Login here: ${loginUrl}`;
 
   await sendEmail(email, 'Welcome to CivicFix!', html, text);
@@ -92,7 +92,7 @@ export async function sendWelcomeEmail(email: string, name: string) {
 export async function sendStatusUpdateEmail(email: string, name: string, ticketNumber: string, newStatus: string) {
   const reportUrl = `${APP_URL}/track/${ticketNumber}`;
   
-  const html = render(ReportStatusEmail({
+  const html = await render(ReportStatusEmail({
     name,
     ticketNumber,
     newStatus,
@@ -116,7 +116,7 @@ export async function sendTicketAssignedEmail(
 ) {
   const dashboardUrl = `${APP_URL}/crew`;
   
-  const html = render(TicketAssignedEmail({
+  const html = await render(TicketAssignedEmail({
     crewName,
     ticketNumber,
     reportTitle,
@@ -133,7 +133,7 @@ export async function sendTicketAssignedEmail(
 export async function sendSlaBreachEmail(email: string, name: string, ticketNumber: string, reportTitle: string = 'Unknown') {
   const dashboardUrl = `${APP_URL}/admin/tickets`;
   
-  const html = render(SlaBreachEmail({
+  const html = await render(SlaBreachEmail({
     adminName: name,
     dashboardUrl,
     breachedTickets: [{
@@ -152,7 +152,7 @@ export async function sendSlaWarningEmail(email: string, name: string, ticketNum
   // We reuse the SLA Breach template for warnings for now, or just send a text version
   const dashboardUrl = `${APP_URL}/admin/tickets`;
   
-  const html = render(SlaBreachEmail({
+  const html = await render(SlaBreachEmail({
     adminName: name,
     dashboardUrl,
     breachedTickets: [{
@@ -178,7 +178,7 @@ export async function sendNewCommentEmail(
 ) {
   const reportUrl = `${APP_URL}/track/${ticketNumber}`;
   
-  const html = render(NewCommentEmail({
+  const html = await render(NewCommentEmail({
     name,
     commenterName,
     isOfficial,
